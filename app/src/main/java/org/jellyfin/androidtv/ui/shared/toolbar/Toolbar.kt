@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,7 +29,7 @@ fun Logo(modifier: Modifier = Modifier) {
 	Image(
 		painter = painterResource(R.drawable.app_logo),
 		contentDescription = stringResource(R.string.app_name),
-		modifier = modifier,
+		modifier = modifier.size(72.dp),
 	)
 }
 
