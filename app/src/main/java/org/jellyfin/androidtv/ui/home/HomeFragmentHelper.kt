@@ -53,7 +53,7 @@ class HomeFragmentHelper(
 		return HomeFragmentBrowseRowDefRow(BrowseRowDef(context.getString(R.string.lbl_recordings), query))
 	}
 
-	fun loadNextUp(): HomeFragmentRow {
+	fun loadNextUp(title: String = context.getString(R.string.lbl_next_up)): HomeFragmentRow {
 		val query = GetNextUpRequest(
 			imageTypeLimit = 1,
 			limit = ITEM_LIMIT_NEXT_UP,
@@ -61,7 +61,7 @@ class HomeFragmentHelper(
 			fields = ItemRepository.browseFields
 		)
 
-		return HomeFragmentBrowseRowDefRow(BrowseRowDef(context.getString(R.string.lbl_next_up), query, arrayOf(ChangeTriggerType.TvPlayback)))
+		return HomeFragmentBrowseRowDefRow(BrowseRowDef(title, query, arrayOf(ChangeTriggerType.TvPlayback)))
 	}
 
 	fun loadOnNow(): HomeFragmentRow {

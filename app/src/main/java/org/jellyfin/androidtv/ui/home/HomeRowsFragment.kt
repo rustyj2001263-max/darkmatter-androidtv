@@ -102,16 +102,20 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 			// Check for coroutine cancellation
 			if (!isActive) return@launch
 
-			// Actually add the sections
+			// Dark Matter Media rows come first, in the same order as the web client
+			rows.addAll(DarkMatterHomeRows(requireContext(), api, userRepository, helper).load(userViewsRepository.views.first()))
+			if (!isActive) return@launch
+
+			// Actually add the sections; resume, next up and latest are already part of the Dark Matter Media rows
 			for (section in homesections) when (section) {
-				HomeSectionType.LATEST_MEDIA -> rows.add(helper.loadRecentlyAdded(userViewsRepository.views.first()))
+				HomeSectionType.LATEST_MEDIA -> Unit
 				HomeSectionType.LIBRARY_TILES_SMALL -> rows.add(HomeFragmentViewsRow(small = false))
 				HomeSectionType.LIBRARY_BUTTONS -> rows.add(HomeFragmentViewsRow(small = true))
-				HomeSectionType.RESUME -> rows.add(helper.loadResumeVideo())
+				HomeSectionType.RESUME -> Unit
 				HomeSectionType.RESUME_AUDIO -> rows.add(helper.loadResumeAudio())
 				HomeSectionType.RESUME_BOOK -> Unit // Books are not (yet) supported
 				HomeSectionType.ACTIVE_RECORDINGS -> rows.add(helper.loadLatestLiveTvRecordings())
-				HomeSectionType.NEXT_UP -> rows.add(helper.loadNextUp())
+				HomeSectionType.NEXT_UP -> Unit
 				HomeSectionType.LIVE_TV -> if (currentUser.policy?.enableLiveTvAccess == true) {
 					rows.add(liveTVRow)
 					rows.add(helper.loadOnNow())
