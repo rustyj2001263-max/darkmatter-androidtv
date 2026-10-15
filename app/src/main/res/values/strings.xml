@@ -18,6 +18,8 @@
     <string name="lbl_ai_smart_picks">🤖 AI Smart Picks</string>
     <string name="lbl_up_next_movies">Up Next Movies</string>
     <string name="lbl_up_next_tv_shows">Up Next TV Shows</string>
+    <string name="lbl_recent_movies">Recent Movies</string>
+    <string name="lbl_recent_tv_shows">Recent TV Shows</string>
     <string name="lbl_discover_movies">Discover Movies</string>
     <string name="lbl_discover_tv_shows">Discover TV Shows</string>
     <string name="continue_listening">Continue listening</string>

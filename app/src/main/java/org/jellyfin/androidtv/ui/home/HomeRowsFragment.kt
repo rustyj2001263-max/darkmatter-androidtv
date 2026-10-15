@@ -103,7 +103,7 @@ class HomeRowsFragment : RowsSupportFragment(), AudioEventListener, View.OnKeyLi
 			if (!isActive) return@launch
 
 			// Dark Matter Media rows come first, in the same order as the web client
-			rows.addAll(DarkMatterHomeRows(requireContext(), api, userRepository, helper).load(userViewsRepository.views.first()))
+			rows.addAll(DarkMatterHomeRows(requireContext(), api, helper).load(userViewsRepository.views.first()))
 			if (!isActive) return@launch
 
 			// Actually add the sections; resume, next up and latest are already part of the Dark Matter Media rows
