@@ -13,6 +13,7 @@ import org.jellyfin.sdk.model.api.request.GetNextUpRequest
 import org.jellyfin.sdk.model.api.request.GetRecommendedProgramsRequest
 import org.jellyfin.sdk.model.api.request.GetRecordingsRequest
 import org.jellyfin.sdk.model.api.request.GetResumeItemsRequest
+import java.util.UUID
 
 class HomeFragmentHelper(
 	private val context: Context,
@@ -53,8 +54,9 @@ class HomeFragmentHelper(
 		return HomeFragmentBrowseRowDefRow(BrowseRowDef(context.getString(R.string.lbl_recordings), query))
 	}
 
-	fun loadNextUp(title: String = context.getString(R.string.lbl_next_up)): HomeFragmentRow {
+	fun loadNextUp(title: String = context.getString(R.string.lbl_next_up), parentId: UUID? = null): HomeFragmentRow {
 		val query = GetNextUpRequest(
+			parentId = parentId,
 			imageTypeLimit = 1,
 			limit = ITEM_LIMIT_NEXT_UP,
 			enableResumable = false,

@@ -14,6 +14,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.ApiClientException
 import org.jellyfin.sdk.api.client.extensions.displayPreferencesApi
 import org.jellyfin.sdk.api.client.extensions.itemsApi
+import org.jellyfin.sdk.api.client.extensions.tvShowsApi
 import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -36,7 +37,11 @@ private const val UP_NEXT_MOVIES_PREFS_KEY = "upNextMovies"
 // JellyBridge libraries holding titles that are not in the library yet
 private const val DISCOVER_MOVIES_LIBRARY = "Discover Movies"
 private const val DISCOVER_SHOWS_LIBRARY = "Discover Shows"
+private val DISCOVER_LIBRARIES = setOf(DISCOVER_MOVIES_LIBRARY, DISCOVER_SHOWS_LIBRARY)
 private const val PLACEHOLDER_PATH_MARKER = "/JellyBridge/"
+
+// Anime has its own libraries; any library with "anime" in its name gets the anime rows instead
+private fun BaseItemDto.isAnimeLibrary() = name?.contains("anime", ignoreCase = true) == true
 
 private const val ITEM_LIMIT_DISCOVER = 24
 private const val ITEM_LIMIT_RECENT = 24
@@ -59,8 +64,8 @@ class HomeFragmentStaticItemsRow(
 
 /**
  * Builds the Dark Matter Media home rows in the same order as the web client:
- * AI Smart Picks, Continue Watching, Up Next Movies, Up Next TV Shows, Recent Movies,
- * Recent TV Shows, Discover Movies and Discover TV Shows. Empty rows are left out.
+ * AI Smart Picks, Continue Watching, Up Next Movies, Up Next TV Shows, Up Next Anime, Recent Movies,
+ * Recent TV Shows, Recent Anime, Discover Movies and Discover TV Shows. Empty rows are left out.
  */
 class DarkMatterHomeRows(
 	private val context: Context,
@@ -78,13 +83,17 @@ class DarkMatterHomeRows(
 		loadPrefsItems(prefs[UP_NEXT_MOVIES_PREFS_KEY])?.let {
 			rows.add(HomeFragmentStaticItemsRow(context.getString(R.string.lbl_up_next_movies), it))
 		}
-		rows.add(helper.loadNextUp(context.getString(R.string.lbl_up_next_tv_shows)))
+		nextUpRow(userViews, anime = false, context.getString(R.string.lbl_up_next_tv_shows))?.let { rows.add(it) }
+		nextUpRow(userViews, anime = true, context.getString(R.string.lbl_up_next_anime))?.let { rows.add(it) }
 
-		loadRecentItems(userViews, CollectionType.MOVIES, BaseItemKind.MOVIE)?.let {
+		loadRecentItems(userViews, setOf(CollectionType.MOVIES), anime = false)?.let {
 			rows.add(HomeFragmentStaticItemsRow(context.getString(R.string.lbl_recent_movies), it))
 		}
-		loadRecentItems(userViews, CollectionType.TVSHOWS, BaseItemKind.EPISODE)?.let {
+		loadRecentItems(userViews, setOf(CollectionType.TVSHOWS), anime = false)?.let {
 			rows.add(HomeFragmentStaticItemsRow(context.getString(R.string.lbl_recent_tv_shows), it))
+		}
+		loadRecentItems(userViews, setOf(CollectionType.MOVIES, CollectionType.TVSHOWS), anime = true)?.let {
+			rows.add(HomeFragmentStaticItemsRow(context.getString(R.string.lbl_recent_anime), it))
 		}
 
 		userViews.firstOrNull { it.name == DISCOVER_MOVIES_LIBRARY }?.let {
@@ -135,22 +144,57 @@ class DarkMatterHomeRows(
 	}
 
 	/**
-	 * Newly added items from every library of one type, newest first. Each library is queried on its
-	 * own because the server caps a combined "latest" list and JellyBridge placeholders would crowd
-	 * out real additions; new episodes are grouped into their series by the server.
+	 * Next episodes for the anime or the other TV libraries. A single library keeps the stock row, which
+	 * refreshes itself after playback; several libraries are merged into one row.
+	 */
+	private suspend fun nextUpRow(userViews: Collection<BaseItemDto>, anime: Boolean, title: String): HomeFragmentRow? {
+		val libraries = userViews.filter {
+			it.collectionType == CollectionType.TVSHOWS && it.isAnimeLibrary() == anime && it.name !in DISCOVER_LIBRARIES
+		}
+
+		return when (libraries.size) {
+			0 -> null
+			1 -> helper.loadNextUp(title, libraries.single().id)
+			else -> libraries
+				.flatMap { library ->
+					try {
+						api.tvShowsApi.getNextUp(
+							parentId = library.id,
+							limit = ITEM_LIMIT_RECENT,
+							fields = ItemRepository.browseFields,
+							imageTypeLimit = 1,
+							enableResumable = false,
+						).content.items
+					} catch (err: ApiClientException) {
+						Timber.e(err, "Unable to load next up for ${library.name}")
+						emptyList()
+					}
+				}
+				.take(ITEM_LIMIT_RECENT)
+				.takeIf { it.isNotEmpty() }
+				?.let { HomeFragmentStaticItemsRow(title, it) }
+		}
+	}
+
+	/**
+	 * Newly added items from every anime or non-anime library of the given types, newest first. Each
+	 * library is queried on its own because the server caps a combined "latest" list and JellyBridge
+	 * placeholders would crowd out real additions; new episodes are grouped into their series by the server.
 	 */
 	private suspend fun loadRecentItems(
 		userViews: Collection<BaseItemDto>,
-		collectionType: CollectionType,
-		itemType: BaseItemKind,
+		collectionTypes: Set<CollectionType>,
+		anime: Boolean,
 	): List<BaseItemDto>? {
 		val items = userViews
-			.filter { it.collectionType == collectionType }
+			.filter { it.collectionType in collectionTypes && it.isAnimeLibrary() == anime }
 			.flatMap { library ->
 				try {
 					api.userLibraryApi.getLatestMedia(
 						parentId = library.id,
-						includeItemTypes = listOf(itemType),
+						includeItemTypes = listOf(
+							if (library.collectionType == CollectionType.MOVIES) BaseItemKind.MOVIE else BaseItemKind.EPISODE
+						),
 						fields = ItemRepository.browseFields + ItemFields.PATH,
 						imageTypeLimit = 1,
 						groupItems = true,
